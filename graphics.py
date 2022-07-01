@@ -21,105 +21,95 @@ from tts import TestTTS, health_test_load
 # check if conditions are met and if they are then it'll 
 # perform the checks required. 
 
-# All checks will be implemented seperately in different files. 
-# All features will also be implemented seperately, but the kivy 
-# elements will all be in this file. 
-
-class QuestionButtons(Button):
-
-    def other(self, button):
-        if button == self.yes_button:
-            return self.no_button
-        else:
-            return self.yes_button
-
-    def confirms(self, which, button ,form):
-        if button.text == self.confirmation:
-            if which:
-                self.test.add_score(1)
-
-            current = self.test.next_question()
-
-            if current == self.test.length():
-                self.add_widget(self.ending_label)
-                time.sleep(5)
-            else:
-                self.question_button.text = self.test.current_question()
-        else:
-            button.text = self.confirmation 
-        self.other(button).text = ('No' if which else 'Yes') 
-    def __init__(self, **kwargs):
-        super(QuestionButtons, self).__init__(**kwargs)
-
-class Tester(FloatLayout):
-
-    def __init__(self, **kwargs): 
-        super(Tester,self).__init__(**kwargs)
-
-        Window.borderless = True
-        Window.fullscreen = 'auto'
-
-        self.in_progress = False
-        self.test = TestTTS() 
-        health_test_load(self.test)
-
-        self.yes_button = Button(text="Yes", size_hint=(.5, .25), background_color = (0, 1, 0, 1))
-        self.yes_button.bind(on_press=lambda func: self.confirms(True, self.yes_button, self.test))
-
-        self.no_button = Button(text="No", size_hint=(.5, .25), pos_hint={'x':.5}, background_color = (1, 0, 0, 1))
-        self.no_button.bind(on_press=lambda func: self.confirms(False, self.no_button, self.test))
-        
-        self.confirmation = "Are you sure?"
-
-        self.question_button = Button(text=self.test.current_question(), size_hint=(1,.75), pos_hint={'y':.25}, background_color=(1,1,1,1))
-        self.question_button.bind(on_press=lambda func: self.test.ask_question())
-
-        self.ending_label = Button(text='You are all done!', size_hint=(1,1), background_color=(1,1,1,1))
-
-
-class QuestionApp(App):
-    def build(self):
-        return Tester()
+# Currently I still need to use this framework more, I don't have 
+# much experience as this is my first time using it. For now I will 
+# have a start button, if conditions are right it'll prompt the user 
+# to start whatever checks it wants
 
 class InterfaceHome(FloatLayout):
+    def next_question(self, which):
+        if which:
+            self.health_test.add_score(1)
+
+        current = self.health_test.next_question()
+
+        if current < self.health_test.length():
+            self.question_button.text = self.health_test.current_question()
+        else:
+            self.remove_widget(self.yes_button)
+            self.remove_widget(self.no_button)
+            self.remove_widget(self.question_button)
+
+            label_text = ''
+            score = self.health_test.current_question()
+
+            if score >= 2:
+                label_text = 'You should get checked out, we are scheduling an appointment ASAP!'
+            else:
+                label_text = 'Everything looks great!'
+
+            end = TestTTS()
+            end.add_question(label_text) 
+            self.end_button = Button(text=end.current_question())
+            self.add_widget(self.end_button)
+            end.ask_question() 
+            time.sleep(10)
+            self.remove_widget(self.end_button) 
+            self.health_test_done = True
+            
+            self.add_widget(self.start_button)
+
+
+    def check(self):
+        current_time = str(datetime.datetime.now().strftime('%H:%M:%S'))
+        hms = list(map(int, current_time.split(':')))
+
+        if hms[0] == 12 and not self.health_test_done:
+            self.remove_widget(self.start_button) 
+
+            self.health_test = TestTTS()
+            health_test_load(self.health_test)
+
+            self.question_button = Button(text=self.health_test.current_question(), size_hint = (1,0.75), pos_hint = {'y':0.25})
+            self.question_button.bind(on_press=lambda func: self.health_test.ask_question())
+            self.add_widget(self.question_button)
+            
+            self.yes_button = Button(text='yes', size_hint = (0.5, 0.25), background_color = (0,1,0,1))
+            self.yes_button.bind(on_press=lambda func: self.next_question(True))
+            self.add_widget(self.yes_button)
+
+            self.no_button = Button(text='no', size_hint = (0.5, 0.25), pos_hint = {'x' : 0.5}, background_color = (1,0,0,1))
+            self.no_button.bind(on_press=lambda func: self.next_question(False))
+            self.add_widget(self.no_button)
+
     def __init__(self, **kwargs):
         super(InterfaceHome,self).__init__(**kwargs)
 
         Window.borderless = True 
         Window.fullscreen = 'auto' 
-        Window.clearcolor = (1,1,1,1)
+
+        self.health_test_done = False
+
+        self.start_button = Button(text='Start')
+        self.start_button.bind(on_press=lambda func: self.check())
+        self.add_widget(self.start_button)
 
 class Interface(App):
+    def get_root(self):
+        return self.root 
+
     def build(self): 
-        return InterfaceHome()
+        root = self.get_root()
+        return root
+    
+    def __init__(self, **kwargs):
+        super(Interface,self).__init__(**kwargs)
 
-class events():
-    def __init__(self):
-        self.checks = []
-        self.done = True
-
-    def make_clock_label(self, str):
-        return Label(text=str, size_hint = (1, 1))
-
-    def event_handler(self):
-        while True:
-            if self.done:
-                current_time = datetime.datetime.now().strftime('%H:%M:%S')
-                print(current_time)
-
-                clock = self.make_clock_label(current_time)
-                App().get_running_app().root.add_widget(clock)
-                self.has_clock = True
-
-                time.sleep(1)
-                App().get_running_app().root.remove_widget(clock)
-
-
+        self.root = InterfaceHome()
 
 if __name__ == '__main__':
-    Interface().run()
+    app = Interface()
+    app.run()
 
-    get_events = events()
-    get_events.event_handler()
 
     
