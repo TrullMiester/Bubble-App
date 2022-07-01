@@ -26,7 +26,7 @@ class TestTTS:
         tts_object.save(file_name)
         
     def ask_question(self):
-        audio = AudioSegment.from_mp3(str(self.current_question) + ".mp3")
+        audio = AudioSegment.from_mp3(str(self.number) + ".mp3")
         self.playback = _play_with_simpleaudio(audio)
      
     def stop_question(self):
@@ -35,18 +35,18 @@ class TestTTS:
     def next_question(self):
         self.number += 1
         return self.number
-    
+
     def current_question(self):
-        assert(self.number < self.length()) 
-        
-        return self.questions[self.number]
+        if self.number < self.length():
+            return self.questions[self.number]
+        else:
+            return self.score
     
     def add_score(self, amount):
         self.score += amount
 
 
 def health_test_load(form):
-    form.add_question("Do you want to answer some questions?")
     form.add_question("Have you encountered today or yesterday chest pain that may feel like pressure, tightness, pain, squeezing or aching?")
     form.add_question("Do you recall recently encountering shortness of breath?")
     form.add_question("Did you feel recently pain or discomfort in the jaw, neck, back, arm or a shoulder?")
