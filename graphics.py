@@ -11,6 +11,7 @@ import time
 import datetime
 
 from tts import TestTTS, health_test_load
+from audio import Calls, Input
 
 # The interface will be a subclass of kivy's FloatLayout 
 # after starting the app the interface will simply display 
@@ -27,6 +28,11 @@ from tts import TestTTS, health_test_load
 # to start whatever checks it wants
 
 class InterfaceHome(FloatLayout):
+    def perform_check(self):
+        self.inp.get_input()
+        if self.inp.check_yes():
+            self.next_question(True)
+
     def next_question(self, which):
         if which:
             self.health_test.add_score(1)
@@ -45,6 +51,7 @@ class InterfaceHome(FloatLayout):
 
             if score >= 2:
                 label_text = 'You should get checked out, we are scheduling an appointment ASAP!'
+                self.caller.call()
             else:
                 label_text = 'Everything looks great!'
 
@@ -59,34 +66,44 @@ class InterfaceHome(FloatLayout):
             
             self.add_widget(self.start_button)
 
+    def start_health_test(self):
+        self.remove_widget(self.start_button) 
+
+        self.health_test = TestTTS()
+        health_test_load(self.health_test)
+
+        self.question_button = Button(text=self.health_test.current_question(), size_hint = (1,0.75), pos_hint = {'y':0.25})
+        self.question_button.bind(on_press=lambda func: self.health_test.ask_question())
+        self.add_widget(self.question_button)
+        
+        self.yes_button = Button(text='yes', size_hint = (0.5, 0.25), background_color = (0,1,0,1))
+        self.yes_button.bind(on_press=lambda func: self.next_question(True))
+        self.add_widget(self.yes_button)
+
+        self.no_button = Button(text='no', size_hint = (0.5, 0.25), pos_hint = {'x' : 0.5}, background_color = (1,0,0,1))
+        self.no_button.bind(on_press=lambda func: self.next_question(False))
+        self.add_widget(self.no_button)
+
+        self.mic_button = Button(text = 'M', size_hint = (0.1, 0.1), pos_hint = {'y' : 0.5}, background_color = (1, 1, 0, 1))
+        self.mic_button.bind(on_press=lambda func: self.perform_check())
+        self.add_widget(self.mic_button)
+
 
     def check(self):
         current_time = str(datetime.datetime.now().strftime('%H:%M:%S'))
         hms = list(map(int, current_time.split(':')))
 
-        if hms[0] == 12 and not self.health_test_done:
-            self.remove_widget(self.start_button) 
-
-            self.health_test = TestTTS()
-            health_test_load(self.health_test)
-
-            self.question_button = Button(text=self.health_test.current_question(), size_hint = (1,0.75), pos_hint = {'y':0.25})
-            self.question_button.bind(on_press=lambda func: self.health_test.ask_question())
-            self.add_widget(self.question_button)
-            
-            self.yes_button = Button(text='yes', size_hint = (0.5, 0.25), background_color = (0,1,0,1))
-            self.yes_button.bind(on_press=lambda func: self.next_question(True))
-            self.add_widget(self.yes_button)
-
-            self.no_button = Button(text='no', size_hint = (0.5, 0.25), pos_hint = {'x' : 0.5}, background_color = (1,0,0,1))
-            self.no_button.bind(on_press=lambda func: self.next_question(False))
-            self.add_widget(self.no_button)
+        if hms[0] == 14 and not self.health_test_done:
+            self.start_health_test()
 
     def __init__(self, **kwargs):
         super(InterfaceHome,self).__init__(**kwargs)
 
         Window.borderless = True 
         Window.fullscreen = 'auto' 
+
+        self.inp = Input()
+        self.caller = Calls()
 
         self.health_test_done = False
 
